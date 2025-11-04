@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>News Detection App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(to bottom, #1e3a8a, #3b82f6);
+      min-height: 100vh;
+      font-family: "Inter", sans-serif;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 1rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+    .gradient-text {
+      background: linear-gradient(to right, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .result-card {
+      transition: all 0.3s ease;
+    }
+    .result-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-4">
+  <div class="w-full max-w-4xl card p-8 space-y-6">
+    <h1 class="text-4xl font-bold text-center gradient-text">News Detection App</h1>
+    <p class="text-gray-600 text-center">Enter an article URL to analyze its content, sentiment, and credibility.</p>
+    <div class="flex space-x-2">
+      <input type="text" id="urlInput" placeholder="Enter article URL..." class="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <button id="analyzeBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">Analyze</button>
+    </div>
+
+    <div id="results" class="grid grid-cols-1 md:grid-cols-2 gap-6 hidden">
+      <div class="result-card p-6 rounded-lg bg-white shadow-md">
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Article Details</h2>
+        <p><strong>Title:</strong> <span id="title">N/A</span></p>
+        <p><strong>Author:</strong> <span id="author">N/A</span></p>
+        <p><strong>Word Count:</strong> <span id="wordCount">N/A</span></p>
+        <p><strong>Reading Time:</strong> <span id="readingTime">N/A</span></p>
+      </div>
+      <div class="result-card p-6 rounded-lg bg-white shadow-md">
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Summary</h2>
+        <p id="summary" class="text-gray-600">N/A</p>
+      </div>
+      <div class="result-card p-6 rounded-lg bg-white shadow-md">
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Sentiment Analysis</h2>
+        <p><strong>Sentiment:</strong> <span id="sentiment">N/A</span></p>
+        <p><strong>Polarity:</strong> <span id="polarity">N/A</span></p>
+      </div>
+      <div class="result-card p-6 rounded-lg bg-white shadow-md">
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Bias & Credibility</h2>
+        <p><strong>Bias:</strong> <span id="bias">N/A</span></p>
+        <p><strong>Credibility:</strong> <span id="credibility" class="font-semibold">N/A</span></p>
+      </div>
+    </div>
+
+    <div id="loading" class="hidden text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600 mx-auto"></div>
+      <p class="text-gray-600 mt-2">Analyzing article...</p>
+    </div>
+  </div>
+
+  <script>
+    // Ensure code runs after DOM is ready and avoid ReferenceError when `process` is undefined in browsers
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlInput = document.getElementById("urlInput");
+      const analyzeBtn = document.getElementById("analyzeBtn");
+      const resultsDiv = document.getElementById("results");
+      const loadingDiv = document.getElementById("loading");
+
+      // Resolve API URL safely in browsers
+      const apiUrl = (typeof process !== 'undefined' && process && process.env && process.env.API_URL)
+        ? process.env.API_URL
+        : (window.API_URL || "http://localhost:3000");
+
+      analyzeBtn.addEventListener("click", async () => {
+        const url = urlInput.value.trim();
+        const urlPattern = /^(http|https):\/\/[^ "]+$/;
+        if (!urlPattern.test(url)) {
+          alert("Please enter a valid URL starting with http:// or https://");
+          return;
+        }
+
+        analyzeBtn.disabled = true;
+        resultsDiv.classList.add("hidden");
+        loadingDiv.classList.remove("hidden");
+
+        try {
+          const response = await fetch(`${apiUrl}/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url })
+          });
+
+          if (!response.ok) {
+            let errorText = 'Unknown error';
+            try { errorText = (await response.json()).error || errorText; } catch (e) { /* ignore */ }
+            throw new Error(errorText);
+          }
+
+          const data = await response.json();
+          document.getElementById("title").textContent = data.title;
+          document.getElementById("author").textContent = data.author;
+          document.getElementById("summary").textContent = data.summary;
+          document.getElementById("sentiment").textContent = data.sentiment;
+          document.getElementById("polarity").textContent = data.polarity;
+          document.getElementById("bias").textContent = data.bias;
+          document.getElementById("credibility").textContent = data.credibility;
+          document.getElementById("wordCount").textContent = data.word_count;
+          document.getElementById("readingTime").textContent = data.reading_time;
+
+          document.getElementById("credibility").className = 
+            data.credibility === "True" ? "font-semibold text-green-600" : "font-semibold text-red-600";
+
+          resultsDiv.classList.remove("hidden");
+        } catch (error) {
+          alert("Error: " + error.message);
+          console.error(error);
+        } finally {
+          analyzeBtn.disabled = false;
+          loadingDiv.classList.add("hidden");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

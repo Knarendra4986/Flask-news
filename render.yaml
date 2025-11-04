@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: news-detection-app
+    env: python
+    plan: free
+    preDeployCommand: apt-get update && apt-get install -y libjpeg-dev zlib1g-dev
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: API_URL
+        value: https://news-detection-app.onrender.com
